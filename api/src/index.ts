@@ -38,20 +38,29 @@ app.post('/words/:id/mark-wrong', async (req, res) => {
   const { id } = req.params;
   const wordId = parseInt(id);
 
-  const existingWrongWord = await prisma.wrongWord.findUnique({
-    where: { wordId },
-  });
+  try {
+    const existingWrongWord = await prisma.wrongWord.findUnique({
+      where: { wordId },
+    });
 
-  if (existingWrongWord) {
-    return res.status(409).json({ message: 'Word is already in the wrong list.' });
+    if (existingWrongWord) {
+      return res.status(409).json({ message: 'Word is already in the wrong list.' });
+    }
+
+    const wrongWord = await prisma.wrongWord.create({
+      data: {
+        wordId,
+      },
+    });
+    res.json(wrongWord);
+  } catch (error: any) {
+    console.error('Error marking word as wrong:', error);
+    // Handle race condition where word was added between check and create
+    if (error?.code === 'P2002') {
+      return res.status(409).json({ message: 'Word is already in the wrong list.' });
+    }
+    res.status(500).json({ message: 'Failed to mark word as wrong' });
   }
-
-  const wrongWord = await prisma.wrongWord.create({
-    data: {
-      wordId,
-    },
-  });
-  res.json(wrongWord);
 });
 
 // Get all wrong words

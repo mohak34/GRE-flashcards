@@ -28,13 +28,16 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
           onPress={shuffleWords}
           style={[
             styles.shuffleButton,
-            { backgroundColor: isShuffled ? '#F8EDE3' : 'transparent' }
+            { 
+              backgroundColor: isShuffled ? '#4CAF50' : '#9DB2BF',
+              borderColor: isShuffled ? '#4CAF50' : '#9DB2BF'
+            }
           ]}
         >
           <MaterialCommunityIcons
             name="shuffle"
-            size={20}
-            color={isShuffled ? '#121212' : '#F8EDE3'}
+            size={22}
+            color="#FFFFFF"
           />
         </TouchableOpacity>
       ),
@@ -437,11 +440,12 @@ const styles = StyleSheet.create({
   },
   shuffleButton: {
     marginRight: 15,
-    padding: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#F8EDE3',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
+    minWidth: 44,
+    minHeight: 44,
   },
 });

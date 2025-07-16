@@ -45,18 +45,28 @@ app.get('/groups/:id/words', (req, res) => __awaiter(void 0, void 0, void 0, fun
 app.post('/words/:id/mark-wrong', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     const wordId = parseInt(id);
-    const existingWrongWord = yield prisma.wrongWord.findUnique({
-        where: { wordId },
-    });
-    if (existingWrongWord) {
-        return res.status(409).json({ message: 'Word is already in the wrong list.' });
+    try {
+        const existingWrongWord = yield prisma.wrongWord.findUnique({
+            where: { wordId },
+        });
+        if (existingWrongWord) {
+            return res.status(409).json({ message: 'Word is already in the wrong list.' });
+        }
+        const wrongWord = yield prisma.wrongWord.create({
+            data: {
+                wordId,
+            },
+        });
+        res.json(wrongWord);
     }
-    const wrongWord = yield prisma.wrongWord.create({
-        data: {
-            wordId,
-        },
-    });
-    res.json(wrongWord);
+    catch (error) {
+        console.error('Error marking word as wrong:', error);
+        // Handle race condition where word was added between check and create
+        if ((error === null || error === void 0 ? void 0 : error.code) === 'P2002') {
+            return res.status(409).json({ message: 'Word is already in the wrong list.' });
+        }
+        res.status(500).json({ message: 'Failed to mark word as wrong' });
+    }
 }));
 // Get all wrong words
 app.get('/wrong-words', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
