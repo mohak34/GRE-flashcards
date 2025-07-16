@@ -5,8 +5,8 @@ import {
   TapGestureHandler,
 } from "react-native-gesture-handler";
 import { API_URL } from "../api";
-import React, { useEffect, useState, useRef } from "react";
-import { View, StyleSheet, Animated, Easing } from "react-native";
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import { View, StyleSheet, Animated, Easing, PanResponder } from "react-native";
 import { Text, Card } from "react-native-paper";
 import { TouchableOpacity } from "react-native";
 
@@ -22,9 +22,14 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
     navigation.setOptions({ title: groupName });
     const fetchWords = async () => {
       try {
+        console.log('Fetching words for group:', groupId);
         const response = await fetch(`${API_URL}/groups/${groupId}/words`);
+        console.log('Response status:', response.status);
         const data = await response.json();
+        console.log('Fetched words:', data.length, 'words');
+        console.log('Setting words state...');
         setWords(data);
+        console.log('Words state should be updated');
       } catch (error) {
         console.error("Error fetching words:", error);
       }
@@ -33,13 +38,19 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
     fetchWords();
   }, [groupId, groupName]);
 
+  useEffect(() => {
+    console.log('Words state changed, length:', words.length);
+  }, [words]);
+
   const flipCard = () => {
+    const newFlippedState = !isFlipped;
+    setIsFlipped(newFlippedState);
     Animated.timing(flipAnimation, {
-      toValue: isFlipped ? 0 : 180,
+      toValue: newFlippedState ? 180 : 0,
       duration: 200,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
-    }).start(() => setIsFlipped(!isFlipped));
+    }).start();
   };
 
   const frontInterpolate = flipAnimation.interpolate({
@@ -52,73 +63,147 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
     outputRange: ["180deg", "360deg"],
   });
 
-  const handleSwipe = (direction: "next" | "prev") => {
-    if (
-      (direction === "prev" && currentIndex === 0) ||
-      (direction === "next" && currentIndex === words.length - 1)
-    ) {
-      return;
-    }
-
-    const slideToValue = direction === "next" ? -400 : 400;
-    
-    Animated.parallel([
-      Animated.timing(slideAnimation, {
-        toValue: slideToValue,
-        duration: 180,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnimation, {
-        toValue: 0,
-        duration: 120,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setIsCorrect(false);
-      setIsWrong(false);
-      if (direction === "next" && currentIndex < words.length - 1) {
-        setCurrentIndex(currentIndex + 1);
-      } else if (direction === "prev" && currentIndex > 0) {
-        setCurrentIndex(currentIndex - 1);
-      }
-      setIsFlipped(false);
-      flipAnimation.setValue(0);
-      slideAnimation.setValue(-slideToValue);
-      
-      Animated.parallel([
-        Animated.timing(slideAnimation, {
-          toValue: 0,
-          duration: 180,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnimation, {
-          toValue: 1,
-          duration: 150,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ]).start();
-    });
-  };
-
   const [isWrong, setIsWrong] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
 
-  const slideAnimation = useRef(new Animated.Value(0)).current;
-  const fadeAnimation = useRef(new Animated.Value(1)).current;
+  const pan = useRef(new Animated.ValueXY()).current;
+  const nextCardOffset = useRef(new Animated.Value(400)).current;
+  const prevCardOffset = useRef(new Animated.Value(-400)).current;
 
-  const onSwipe = (event: any) => {
-    if (event.nativeEvent.state === State.END) {
-      if (event.nativeEvent.translationX > 50) {
-        handleSwipe("prev");
-      } else if (event.nativeEvent.translationX < -50) {
-        handleSwipe("next");
+  useEffect(() => {
+    if (words.length === 0) return;
+    
+    // Update card positions based on pan gesture
+    const listener = pan.x.addListener(({ value }) => {
+      if (value < 0 && currentIndex < words.length - 1) {
+        // Dragging left, show next card
+        const newOffset = Math.max(0, 400 + value);
+        nextCardOffset.setValue(newOffset);
+      } else if (value > 0 && currentIndex > 0) {
+        // Dragging right, show previous card  
+        const newOffset = Math.min(0, -400 + value);
+        prevCardOffset.setValue(newOffset);
+      } else {
+        // Reset positions when not in valid drag range
+        nextCardOffset.setValue(400);
+        prevCardOffset.setValue(-400);
       }
-    }
+    });
+
+    return () => {
+      pan.x.removeListener(listener);
+    };
+  }, [currentIndex, words.length, words]);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (evt, gestureState) => {
+          return Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+        },
+        onPanResponderMove: Animated.event(
+          [
+            null,
+            {
+              dx: pan.x,
+            },
+          ],
+          { useNativeDriver: false }
+        ),
+        onPanResponderRelease: (e, gestureState) => {
+          console.log('Swipe detected:', gestureState.dx);
+          console.log('Current index:', currentIndex);
+          console.log('Words length:', words.length);
+          
+          if (words.length === 0) {
+            console.log('No words loaded, ignoring swipe');
+            return;
+          }
+          
+          if (gestureState.dx > 100) {
+            console.log('Attempting to go to previous word');
+            if (currentIndex > 0) {
+              console.log('Going to previous word');
+              handleSwipe("prev");
+            } else {
+              console.log('Already at first word, returning to center');
+              resetCardPositions();
+            }
+          } else if (gestureState.dx < -100) {
+            console.log('Attempting to go to next word');
+            if (currentIndex < words.length - 1) {
+              console.log('Going to next word');
+              handleSwipe("next");
+            } else {
+              console.log('Already at last word, returning to center');
+              resetCardPositions();
+            }
+          } else {
+            console.log('Insufficient swipe distance, returning to center');
+            resetCardPositions();
+          }
+        },
+      }),
+    [words.length, currentIndex]
+  );
+
+  const resetCardPositions = () => {
+    Animated.parallel([
+      Animated.spring(pan, {
+        toValue: { x: 0, y: 0 },
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8,
+      }),
+      Animated.spring(nextCardOffset, {
+        toValue: 400,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8,
+      }),
+      Animated.spring(prevCardOffset, {
+        toValue: -400,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8,
+      }),
+    ]).start();
   };
+
+  const handleSwipe = (direction: "next" | "prev") => {
+    const isNext = direction === "next";
+    const slideDirection = isNext ? -400 : 400;
+    
+    // Reset all card positions first
+    pan.setValue({ x: 0, y: 0 });
+    
+    Animated.parallel([
+      Animated.timing(pan, {
+        toValue: { x: slideDirection, y: 0 },
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(isNext ? nextCardOffset : prevCardOffset, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // Update state
+      setCurrentIndex(prev => isNext ? prev + 1 : prev - 1);
+      setIsFlipped(false);
+      setIsCorrect(false);
+      setIsWrong(false);
+      flipAnimation.setValue(0);
+      
+      // Reset all positions immediately for new layout
+      pan.setValue({ x: 0, y: 0 });
+      nextCardOffset.setValue(400);
+      prevCardOffset.setValue(-400);
+    });
+  };
+
 
   const markWrong = async () => {
     setIsWrong(true);
@@ -147,79 +232,92 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
   }
 
   const currentWord: any = words[currentIndex];
+  const nextWord: any = currentIndex < words.length - 1 ? words[currentIndex + 1] : null;
+  const prevWord: any = currentIndex > 0 ? words[currentIndex - 1] : null;
 
-  return (
-    <PanGestureHandler onHandlerStateChange={onSwipe}>
-      <View style={styles.container}>
+  const renderCard = (word: any, animatedStyle: any, isMain = false) => (
+    <Animated.View
+      style={[
+        styles.cardContainer,
+        animatedStyle,
+        !isMain && { position: 'absolute' }
+      ]}
+    >
+      <TouchableOpacity
+        style={styles.touchableCard}
+        onPress={isMain ? flipCard : undefined}
+        disabled={!isMain}
+      >
         <Animated.View
           style={[
-            styles.cardContainer,
-            {
-              opacity: fadeAnimation,
-              transform: [{ translateX: slideAnimation }],
-            },
+            styles.card,
+            { transform: [{ rotateY: isMain ? frontInterpolate : "0deg" }] },
           ]}
         >
-          <TapGestureHandler
-            onHandlerStateChange={({ nativeEvent }) =>
-              nativeEvent.state === State.ACTIVE && flipCard()
-            }
-          >
-            <View style={styles.touchableCard}>
-              <Animated.View
-                style={[
-                  styles.card,
-                  { transform: [{ rotateY: frontInterpolate }] },
-                ]}
-              >
-                <Card.Content>
-                  <Text style={styles.cardText}>{currentWord.text}</Text>
-                </Card.Content>
-              </Animated.View>
-              <Animated.View
-                style={[
-                  styles.card,
-                  styles.cardBack,
-                  { transform: [{ rotateY: backInterpolate }] },
-                ]}
-              >
-                <Card.Content>
-                  <Text style={styles.cardText}>{currentWord.meaning}</Text>
-                </Card.Content>
-              </Animated.View>
-            </View>
-          </TapGestureHandler>
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[
-                styles.button,
-                { backgroundColor: isWrong ? "red" : "#9DB2BF" },
-              ]}
-              onPress={markWrong}
-            >
-              <MaterialCommunityIcons
-                name="close-thick"
-                size={32}
-                color="#F8EDE3"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.button,
-                { backgroundColor: isCorrect ? "green" : "#9DB2BF" },
-              ]}
-              onPress={markCorrect}
-            >
-              <MaterialCommunityIcons
-                name="check-bold"
-                size={32}
-                color="#F8EDE3"
-              />
-            </TouchableOpacity>
-          </View>
+          <Card.Content>
+            <Text style={styles.cardText}>{word.text}</Text>
+          </Card.Content>
         </Animated.View>
+        {isMain && (
+          <Animated.View
+            style={[
+              styles.card,
+              styles.cardBack,
+              { transform: [{ rotateY: backInterpolate }] },
+            ]}
+          >
+            <Card.Content>
+              <Text style={styles.cardText}>{word.meaning}</Text>
+            </Card.Content>
+          </Animated.View>
+        )}
+      </TouchableOpacity>
+      {isMain && (
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              { backgroundColor: isWrong ? "red" : "#9DB2BF" },
+            ]}
+            onPress={markWrong}
+          >
+            <MaterialCommunityIcons
+              name="close-thick"
+              size={32}
+              color="#F8EDE3"
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              { backgroundColor: isCorrect ? "green" : "#9DB2BF" },
+            ]}
+            onPress={markCorrect}
+          >
+            <MaterialCommunityIcons
+              name="check-bold"
+              size={32}
+              color="#F8EDE3"
+            />
+          </TouchableOpacity>
+        </View>
+      )}
+    </Animated.View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <View {...panResponder.panHandlers} style={{ flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center' }}>
+        {/* Previous card */}
+        {prevWord && renderCard(prevWord, { transform: [{ translateX: prevCardOffset }] })}
+        
+        {/* Current card */}
+        {renderCard(currentWord, { transform: [{ translateX: pan.x }] }, true)}
+        
+        {/* Next card */}
+        {nextWord && renderCard(nextWord, { transform: [{ translateX: nextCardOffset }] })}
       </View>
-    </PanGestureHandler>
+    </View>
   );
 };
 
