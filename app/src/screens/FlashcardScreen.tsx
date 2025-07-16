@@ -1,6 +1,8 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { PanGestureHandler, State, TouchableOpacity } from 'react-native-gesture-handler';
 import { API_URL } from '../api';
 import React, { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, Animated, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Animated } from 'react-native';
 import { Text, Card, Button } from 'react-native-paper';
 
 export const FlashcardScreen = ({ route, navigation }: any) => {
@@ -45,18 +47,62 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
   });
 
   const handleSwipe = (direction: 'next' | 'prev') => {
-    if (direction === 'next' && currentIndex < words.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+    const slideToValue = direction === 'next' ? -500 : 500;
+    Animated.parallel([
+      Animated.timing(slideAnimation, {
+        toValue: slideToValue,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnimation, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setIsCorrect(false);
+      setIsWrong(false);
+      if (direction === 'next' && currentIndex < words.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+      } else if (direction === 'prev' && currentIndex > 0) {
+        setCurrentIndex(currentIndex - 1);
+      }
       setIsFlipped(false);
       flipAnimation.setValue(0);
-    } else if (direction === 'prev' && currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-      setIsFlipped(false);
-      flipAnimation.setValue(0);
+      slideAnimation.setValue(-slideToValue);
+      Animated.parallel([
+        Animated.timing(slideAnimation, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnimation, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+  };
+
+  const [isWrong, setIsWrong] = useState(false);
+  const [isCorrect, setIsCorrect] = useState(false);
+
+  const slideAnimation = useRef(new Animated.Value(0)).current;
+  const fadeAnimation = useRef(new Animated.Value(1)).current;
+
+  const onSwipe = (event: any) => {
+    if (event.nativeEvent.state === State.END) {
+      if (event.nativeEvent.translationX > 50) {
+        handleSwipe('prev');
+      } else if (event.nativeEvent.translationX < -50) {
+        handleSwipe('next');
+      }
     }
   };
 
   const markWrong = async () => {
+    setIsWrong(true);
     const word: any = words[currentIndex];
     try {
       await fetch(`${API_URL}/words/${word.id}/mark-wrong`, {
@@ -68,6 +114,11 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
     handleSwipe('next');
   };
 
+  const markCorrect = () => {
+    setIsCorrect(true);
+    handleSwipe('next');
+  };
+
   if (words.length === 0) {
     return <View style={styles.container}><Text>Loading...</Text></View>;
   }
@@ -75,35 +126,28 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
   const currentWord: any = words[currentIndex];
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={flipCard} activeOpacity={1}>
-        <Animated.View style={[styles.card, { transform: [{ rotateY: frontInterpolate }] }]}>
-          <Card.Content>
-            <Text style={styles.cardText}>{currentWord.text}</Text>
-          </Card.Content>
+    <PanGestureHandler onHandlerStateChange={onSwipe}>
+      <View style={styles.container}>
+        <Animated.View style={[styles.cardContainer, { opacity: fadeAnimation, transform: [{ translateX: slideAnimation }] }]}>
+          <TouchableOpacity onPress={flipCard} activeOpacity={1} style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Animated.View style={[styles.card, { transform: [{ rotateY: frontInterpolate }] }]}>
+              <Card.Content>
+                <Text style={styles.cardText}>{currentWord.text}</Text>
+              </Card.Content>
+            </Animated.View>
+            <Animated.View style={[styles.card, styles.cardBack, { transform: [{ rotateY: backInterpolate }] }]}>
+              <Card.Content>
+                <Text style={styles.cardText}>{currentWord.meaning}</Text>
+              </Card.Content>
+            </Animated.View>
+          </TouchableOpacity>
+          <View style={styles.buttonContainer}>
+            <Button icon={() => <MaterialCommunityIcons name="close-thick" size={32} color="#F8EDE3" />} mode="contained" style={{ backgroundColor: isWrong ? 'red' : '#9DB2BF' }} onPress={markWrong} />
+            <Button icon={() => <MaterialCommunityIcons name="check-bold" size={32} color="#F8EDE3" />} mode="contained" style={{ backgroundColor: isCorrect ? 'green' : '#9DB2BF' }} onPress={markCorrect} />
+          </View>
         </Animated.View>
-        <Animated.View style={[styles.card, styles.cardBack, { transform: [{ rotateY: backInterpolate }] }]}>
-          <Card.Content>
-            <Text style={styles.cardText}>{currentWord.meaning}</Text>
-          </Card.Content>
-        </Animated.View>
-      </TouchableOpacity>
-
-      <View style={styles.buttonContainer}>
-        <Button icon="arrow-left" mode="contained" onPress={() => handleSwipe('prev')} disabled={currentIndex === 0}>
-          Prev
-        </Button>
-        <Button icon="close" mode="contained" color="#ff4d4d" onPress={markWrong}>
-          Wrong
-        </Button>
-        <Button icon="check" mode="contained" color="#4caf50" onPress={() => handleSwipe('next')}>
-          Correct
-        </Button>
-        <Button icon="arrow-right" mode="contained" onPress={() => handleSwipe('next')} disabled={currentIndex === words.length - 1}>
-          Next
-        </Button>
       </View>
-    </View>
+    </PanGestureHandler>
   );
 };
 
@@ -113,26 +157,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    backgroundColor: '#121212',
+  },
+  cardContainer: {
+    width: '100%',
+    height: '60%',
+    backgroundColor: '#27374D',
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   card: {
-    width: 300,
-    height: 200,
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
     backfaceVisibility: 'hidden',
+    backgroundColor: 'transparent',
   },
   cardBack: {
     position: 'absolute',
     top: 0,
   },
   cardText: {
-    fontSize: 24,
+    fontSize: 32,
+    fontWeight: '600',
     textAlign: 'center',
+    color: '#F8EDE3',
+    width: '100%',
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: '100%',
-    marginTop: 20,
+    position: 'absolute',
+    bottom: 20,
   },
 });

@@ -17,7 +17,7 @@ export const AppNavigator = () => {
 
   return (
     <PaperProvider theme={theme}>
-      <NavigationContainer theme={theme}>
+      <NavigationContainer theme={{ ...theme, colors: { ...theme.colors, background: '#121212' } }}>
         <Stack.Navigator
           initialRouteName="Groups"
           screenOptions={{
