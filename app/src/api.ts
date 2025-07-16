@@ -7,15 +7,13 @@ const getApiUrl = () => {
     return 'http://localhost:3001';
   }
 
-  if (__DEV__) {
-    // Development mode - use local server
-    const hostUri = Constants.expoConfig?.hostUri;
-    const localHost = hostUri ? hostUri.split(':')[0] : 'localhost';
-    return `http://${localHost}:3001`;
-  } else {
-    // Production mode - use Railway (replace with your actual Railway URL)
-    return 'https://gre-flashcards-production.railway.app';
-  }
+  // On mobile, we need to use the IP address of the machine running Metro.
+  // Constants.expoConfig.hostUri should contain this, e.g., "192.168.1.100:8081"
+  // We just need to extract the IP address part.
+  const hostUri = Constants.expoConfig?.hostUri;
+  const localHost = hostUri ? hostUri.split(':')[0] : 'localhost';
+
+  return `http://${localHost}:3001`;
 };
 
 export const API_URL = getApiUrl();
