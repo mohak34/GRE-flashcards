@@ -5,7 +5,7 @@ import {
   TapGestureHandler,
 } from "react-native-gesture-handler";
 import { API_URL } from "../api";
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { View, StyleSheet, Animated, Easing, PanResponder } from "react-native";
 import { Text, Card } from "react-native-paper";
 import { TouchableOpacity } from "react-native";
@@ -47,7 +47,50 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
 
   useEffect(() => {
     console.log('Words state changed, length:', words.length);
+    if (words.length > 0) {
+      console.log('First word:', words[0]?.text);
+    }
   }, [words]);
+
+  useEffect(() => {
+    console.log('Original words state changed, length:', originalWords.length);
+    if (originalWords.length > 0) {
+      console.log('First original word:', originalWords[0]?.text);
+    }
+  }, [originalWords]);
+
+  useEffect(() => {
+    console.log('Shuffle state changed to:', isShuffled);
+  }, [isShuffled]);
+
+  const shuffleWords = () => {
+    console.log('Shuffle button clicked, current isShuffled:', isShuffled);
+    console.log('Current words length:', words.length);
+    console.log('Original words length:', originalWords.length);
+    
+    if (words.length === 0) {
+      console.log('No words to shuffle');
+      return;
+    }
+    
+    if (isShuffled) {
+      // Return to original order
+      console.log('Returning to original order');
+      setWords([...originalWords]);
+      setIsShuffled(false);
+    } else {
+      // Shuffle the words using current words or originalWords as fallback
+      console.log('Shuffling words');
+      const sourceWords = originalWords.length > 0 ? originalWords : words;
+      const shuffled = [...sourceWords].sort(() => Math.random() - 0.5);
+      console.log('Shuffled array created, first few items:', shuffled.slice(0, 3).map(w => w?.text));
+      setWords(shuffled);
+      setIsShuffled(true);
+    }
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    flipAnimation.setValue(0);
+  };
 
   // Separate effect to update header when shuffle state changes
   useEffect(() => {
@@ -66,27 +109,13 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
         >
           <MaterialCommunityIcons
             name="shuffle"
-            size={22}
+            size={18}
             color="#FFFFFF"
           />
         </TouchableOpacity>
       ),
     });
-  }, [isShuffled, wrongWords, groupName]);
-
-  const shuffleWords = () => {
-    if (isShuffled) {
-      setWords([...originalWords]);
-      setIsShuffled(false);
-    } else {
-      const shuffled = [...words].sort(() => Math.random() - 0.5);
-      setWords(shuffled);
-      setIsShuffled(true);
-    }
-    setCurrentIndex(0);
-    setIsFlipped(false);
-    flipAnimation.setValue(0);
-  };
+  }, [isShuffled, wrongWords, groupName, navigation, words.length, originalWords.length]);
 
   const flipCard = () => {
     const newFlippedState = !isFlipped;
@@ -166,15 +195,26 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
             return;
           }
           
-          Animated.event(
-            [
-              null,
-              {
-                dx: pan.x,
-              },
-            ],
-            { useNativeDriver: false }
-          )(evt, gestureState);
+          // Limit the movement to prevent excessive dragging
+          const limitedDx = Math.max(-250, Math.min(250, gestureState.dx));
+          pan.setValue({ x: limitedDx, y: 0 });
+          
+          // Update card positions based on limited movement
+          if (limitedDx < 0 && currentIndex < words.length - 1) {
+            // Dragging left, show next card
+            const newOffset = Math.max(0, 400 + limitedDx);
+            nextCardOffset.setValue(newOffset);
+            prevCardOffset.setValue(-400);
+          } else if (limitedDx > 0 && currentIndex > 0) {
+            // Dragging right, show previous card  
+            const newOffset = Math.min(0, -400 + limitedDx);
+            prevCardOffset.setValue(newOffset);
+            nextCardOffset.setValue(400);
+          } else {
+            // Reset positions when not in valid drag range
+            nextCardOffset.setValue(400);
+            prevCardOffset.setValue(-400);
+          }
         },
         onPanResponderRelease: (e, gestureState) => {
           console.log('Swipe detected:', gestureState.dx);
@@ -183,10 +223,13 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
           
           if (words.length === 0) {
             console.log('No words loaded, ignoring swipe');
+            resetCardPositions();
             return;
           }
           
-          if (gestureState.dx > 100) {
+          const swipeThreshold = 80; // Reduced threshold for easier swiping
+          
+          if (gestureState.dx > swipeThreshold) {
             console.log('Attempting to go to previous word');
             if (currentIndex > 0) {
               console.log('Going to previous word');
@@ -195,7 +238,7 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
               console.log('Already at first word, returning to center');
               resetCardPositions();
             }
-          } else if (gestureState.dx < -100) {
+          } else if (gestureState.dx < -swipeThreshold) {
             console.log('Attempting to go to next word');
             if (currentIndex < words.length - 1) {
               console.log('Going to next word');
@@ -215,23 +258,20 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
 
   const resetCardPositions = () => {
     Animated.parallel([
-      Animated.spring(pan, {
+      Animated.timing(pan, {
         toValue: { x: 0, y: 0 },
+        duration: 200,
         useNativeDriver: true,
-        tension: 100,
-        friction: 8,
       }),
-      Animated.spring(nextCardOffset, {
+      Animated.timing(nextCardOffset, {
         toValue: 400,
+        duration: 200,
         useNativeDriver: true,
-        tension: 100,
-        friction: 8,
       }),
-      Animated.spring(prevCardOffset, {
+      Animated.timing(prevCardOffset, {
         toValue: -400,
+        duration: 200,
         useNativeDriver: true,
-        tension: 100,
-        friction: 8,
       }),
     ]).start();
   };
@@ -480,12 +520,12 @@ const styles = StyleSheet.create({
   },
   shuffleButton: {
     marginRight: 15,
-    padding: 10,
-    borderRadius: 8,
+    padding: 8,
+    borderRadius: 6,
     borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
-    minWidth: 44,
-    minHeight: 44,
+    minWidth: 36,
+    minHeight: 36,
   },
 });
