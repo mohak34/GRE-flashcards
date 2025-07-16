@@ -1,9 +1,10 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { PanGestureHandler, State, TouchableOpacity } from 'react-native-gesture-handler';
+import { PanGestureHandler, State, TapGestureHandler } from 'react-native-gesture-handler';
 import { API_URL } from '../api';
 import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
-import { Text, Card, Button } from 'react-native-paper';
+import { Text, Card } from 'react-native-paper';
+import { TouchableOpacity } from 'react-native';
 
 export const FlashcardScreen = ({ route, navigation }: any) => {
   const { groupId, groupName } = route.params;
@@ -138,18 +139,20 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
     <PanGestureHandler onHandlerStateChange={onSwipe}>
       <View style={styles.container}>
         <Animated.View style={[styles.cardContainer, { opacity: fadeAnimation, transform: [{ translateX: slideAnimation }] }]}>
-          <TouchableOpacity onPress={flipCard} activeOpacity={1} style={styles.touchableCard}>
-            <Animated.View style={[styles.card, { transform: [{ rotateY: frontInterpolate }] }]}>
-              <Card.Content style={styles.cardContent}>
-                <Text style={styles.cardText}>{currentWord.text}</Text>
-              </Card.Content>
-            </Animated.View>
-            <Animated.View style={[styles.card, styles.cardBack, { transform: [{ rotateY: backInterpolate }] }]}>
-              <Card.Content style={styles.cardContent}>
-                <Text style={styles.cardText}>{currentWord.meaning}</Text>
-              </Card.Content>
-            </Animated.View>
-          </TouchableOpacity>
+          <TapGestureHandler onHandlerStateChange={({ nativeEvent }) => nativeEvent.state === State.ACTIVE && flipCard()}>
+            <View style={styles.touchableCard}>
+              <Animated.View style={[styles.card, { transform: [{ rotateY: frontInterpolate }] }]}>
+                <Card.Content>
+                  <Text style={styles.cardText}>{currentWord.text}</Text>
+                </Card.Content>
+              </Animated.View>
+              <Animated.View style={[styles.card, styles.cardBack, { transform: [{ rotateY: backInterpolate }] }]}>
+                <Card.Content>
+                  <Text style={styles.cardText}>{currentWord.meaning}</Text>
+                </Card.Content>
+              </Animated.View>
+            </View>
+          </TapGestureHandler>
           <View style={styles.buttonContainer}>
             <TouchableOpacity style={[styles.button, { backgroundColor: isWrong ? 'red' : '#9DB2BF' }]} onPress={markWrong}>
               <MaterialCommunityIcons name="close-thick" size={32} color="#F8EDE3" />
@@ -174,7 +177,7 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     width: '100%',
-    height: '55%',
+    height: '45%',
     backgroundColor: '#27374D',
     borderRadius: 20,
     alignItems: 'center',
@@ -210,12 +213,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     width: '100%',
     position: 'absolute',
-    bottom: 20,
+    bottom: 10,
   },
   button: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
   },
