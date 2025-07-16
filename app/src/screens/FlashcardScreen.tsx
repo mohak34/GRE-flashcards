@@ -11,24 +11,50 @@ import { Text, Card } from "react-native-paper";
 import { TouchableOpacity } from "react-native";
 
 export const FlashcardScreen = ({ route, navigation }: any) => {
-  const { groupId, groupName } = route.params;
+  const { groupId, groupName, wrongWords } = route.params || {};
   const [words, setWords] = useState([]);
+  const [originalWords, setOriginalWords] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [isShuffled, setIsShuffled] = useState(false);
 
   const flipAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    navigation.setOptions({ title: groupName });
+    navigation.setOptions({ 
+      title: wrongWords ? 'Wrong Words' : groupName,
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={shuffleWords}
+          style={[
+            styles.shuffleButton,
+            { backgroundColor: isShuffled ? '#F8EDE3' : 'transparent' }
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="shuffle"
+            size={20}
+            color={isShuffled ? '#121212' : '#F8EDE3'}
+          />
+        </TouchableOpacity>
+      ),
+    });
+    
     const fetchWords = async () => {
       try {
-        console.log('Fetching words for group:', groupId);
-        const response = await fetch(`${API_URL}/groups/${groupId}/words`);
-        console.log('Response status:', response.status);
-        const data = await response.json();
-        console.log('Fetched words:', data.length, 'words');
+        let data;
+        if (wrongWords) {
+          data = wrongWords;
+        } else {
+          console.log('Fetching words for group:', groupId);
+          const response = await fetch(`${API_URL}/groups/${groupId}/words`);
+          console.log('Response status:', response.status);
+          data = await response.json();
+          console.log('Fetched words:', data.length, 'words');
+        }
         console.log('Setting words state...');
         setWords(data);
+        setOriginalWords(data);
         console.log('Words state should be updated');
       } catch (error) {
         console.error("Error fetching words:", error);
@@ -36,11 +62,25 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
     };
 
     fetchWords();
-  }, [groupId, groupName]);
+  }, [groupId, groupName, wrongWords]);
 
   useEffect(() => {
     console.log('Words state changed, length:', words.length);
   }, [words]);
+
+  const shuffleWords = () => {
+    if (isShuffled) {
+      setWords([...originalWords]);
+      setIsShuffled(false);
+    } else {
+      const shuffled = [...words].sort(() => Math.random() - 0.5);
+      setWords(shuffled);
+      setIsShuffled(true);
+    }
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    flipAnimation.setValue(0);
+  };
 
   const flipCard = () => {
     const newFlippedState = !isFlipped;
@@ -100,17 +140,36 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: (evt, gestureState) => {
+          // Prevent swiping right when on first word
+          if (currentIndex === 0 && gestureState.dx > 0) {
+            return false;
+          }
+          // Prevent swiping left when on last word
+          if (currentIndex === words.length - 1 && gestureState.dx < 0) {
+            return false;
+          }
           return Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
         },
-        onPanResponderMove: Animated.event(
-          [
-            null,
-            {
-              dx: pan.x,
-            },
-          ],
-          { useNativeDriver: false }
-        ),
+        onPanResponderMove: (evt, gestureState) => {
+          // Prevent movement if on first word and trying to go right
+          if (currentIndex === 0 && gestureState.dx > 0) {
+            return;
+          }
+          // Prevent movement if on last word and trying to go left
+          if (currentIndex === words.length - 1 && gestureState.dx < 0) {
+            return;
+          }
+          
+          Animated.event(
+            [
+              null,
+              {
+                dx: pan.x,
+              },
+            ],
+            { useNativeDriver: false }
+          )(evt, gestureState);
+        },
         onPanResponderRelease: (e, gestureState) => {
           console.log('Swipe detected:', gestureState.dx);
           console.log('Current index:', currentIndex);
@@ -375,5 +434,14 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
+  },
+  shuffleButton: {
+    marginRight: 15,
+    padding: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F8EDE3',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

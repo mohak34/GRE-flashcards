@@ -71,6 +71,29 @@ app.get('/wrong-words', (req, res) => __awaiter(void 0, void 0, void 0, function
     });
     res.json(wrongWords.map(ww => ww.word));
 }));
+// Remove a word from the wrong words list
+app.delete('/wrong-words/:wordId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { wordId } = req.params;
+    try {
+        yield prisma.wrongWord.delete({
+            where: { wordId: parseInt(wordId) },
+        });
+        res.json({ message: 'Word removed from wrong list successfully' });
+    }
+    catch (error) {
+        res.status(404).json({ message: 'Word not found in wrong list' });
+    }
+}));
+// Remove all words from the wrong words list
+app.delete('/wrong-words', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        yield prisma.wrongWord.deleteMany({});
+        res.json({ message: 'All words removed from wrong list successfully' });
+    }
+    catch (error) {
+        res.status(500).json({ message: 'Failed to clear wrong words list' });
+    }
+}));
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);

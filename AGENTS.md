@@ -4,24 +4,31 @@ This document outlines essential commands and code style guidelines for AI agent
 
 ## 1. Build, Lint, and Test Commands
 
-### API (Node.js/TypeScript)
-- **Build:** `npm run build` or `tsc`
-- **Lint:** No explicit linting command found. Adhere to existing code style.
-- **Test:** No specific test command defined in `package.json`. If tests are added, `npm test` would typically run them. For single tests, specify the test file (e.g., `jest path/to/test.ts`).
+### API (Node.js/TypeScript) - `cd api/`
+- **Build:** `npm run build` (runs `tsc`)
+- **Dev:** `npm run dev` (runs with nodemon)
+- **Lint:** ESLint installed but no script defined. Use `npx eslint src/` for manual linting
+- **Test:** No tests configured. Use `jest` for unit tests if needed
+- **Single Test:** `jest path/to/test.ts` or `npm test -- path/to/test.ts`
 
-### App (React Native/TypeScript)
-- **Build/Start:** `npm run start` (starts development server)
-- **Lint:** No explicit linting command found. Adhere to existing code style.
-- **Test:** No specific test command defined. If tests are added (e.g., with Jest), `npm test` or `expo test` might be used. For single tests, specify the test file/name.
+### App (React Native/Expo) - `cd app/`
+- **Start:** `npm start` (expo start)
+- **Platform:** `npm run android|ios|web`
+- **Lint:** ESLint installed but no script defined. Use `npx eslint src/` for manual linting
+- **Test:** No tests configured. Use `jest` or `expo test` if needed
+- **Single Test:** `jest TestName` or `npm test -- TestName`
 
 ## 2. Code Style Guidelines
 
-- **Imports:** Group imports logically (e.g., external libraries, internal modules, relative paths).
-- **Formatting:** Maintain consistent indentation (2 spaces for JS/TS, 4 for Python if applicable).
-- **Types:** Utilize TypeScript for strong typing and clear interfaces.
-- **Naming:** Use `camelCase` for variables and functions, `PascalCase` for components and classes.
-- **Error Handling:** Implement robust `try...catch` blocks for error-prone operations.
-- **Comments:** Add comments to explain complex logic or non-obvious decisions.
+- **Imports:** Group by: external libraries, React/RN, local modules, relative imports
+- **Formatting:** 2 spaces indentation, single quotes for strings, trailing commas
+- **Types:** Use TypeScript interfaces, avoid `any` (use specific types or `unknown`)
+- **Naming:** `camelCase` for variables/functions, `PascalCase` for components/interfaces
+- **Components:** Export named components (not default), use functional components with hooks
+- **Error Handling:** Use try/catch for async operations, proper error logging
+- **Styling:** StyleSheet.create() for React Native, consistent color theming
 
-## 3. Agent-Specific Rules
-No Cursor or Copilot specific rules found in this repository.
+## 3. Project Structure
+- API uses Express + Prisma ORM with PostgreSQL
+- App uses React Native + Expo with React Navigation
+- No Cursor or Copilot specific rules found

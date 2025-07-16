@@ -1,45 +1,63 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { GroupListScreen } from '../screens/GroupListScreen';
 import { FlashcardScreen } from '../screens/FlashcardScreen';
 import { WrongWordsScreen } from '../screens/WrongWordsScreen';
 import { theme } from '../theme';
-import { Provider as PaperProvider, Appbar, Menu } from 'react-native-paper';
-import { useState } from 'react';
+import { Provider as PaperProvider, Appbar } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
+
+const TabNavigator = () => {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+          if (route.name === 'Groups') {
+            iconName = focused ? 'view-list' : 'view-list-outline';
+          } else if (route.name === 'Wrong Words') {
+            iconName = focused ? 'alert-circle' : 'alert-circle-outline';
+          }
+          return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#F8EDE3',
+        tabBarInactiveTintColor: '#9DB2BF',
+        tabBarStyle: {
+          backgroundColor: '#121212',
+          borderTopWidth: 1,
+          borderTopColor: '#9DB2BF',
+        },
+        headerShown: false,
+      })}
+    >
+      <Tab.Screen name="Groups" component={GroupListScreen} />
+      <Tab.Screen name="Wrong Words" component={WrongWordsScreen} />
+    </Tab.Navigator>
+  );
+};
 
 export const AppNavigator = () => {
-  const [visible, setVisible] = useState(false);
-  const openMenu = () => setVisible(true);
-  const closeMenu = () => setVisible(false);
-
   return (
     <PaperProvider theme={theme}>
       <NavigationContainer theme={{ ...theme, colors: { ...theme.colors, background: '#121212' } }}>
         <Stack.Navigator
-          initialRouteName="Groups"
+          initialRouteName="Main"
           screenOptions={{
             header: ({ navigation, back, route }) => (
               <Appbar.Header>
                 {back ? <Appbar.BackAction onPress={navigation.goBack} /> : null}
-                <Appbar.Content title={route.name} />
-                <Menu
-                  visible={visible}
-                  onDismiss={closeMenu}
-                  anchor={<Appbar.Action icon="menu" color="white" onPress={openMenu} />}
-                >
-                  <Menu.Item onPress={() => { navigation.navigate('Groups'); closeMenu(); }} title="Groups" />
-                  <Menu.Item onPress={() => { navigation.navigate('Wrong Words'); closeMenu(); }} title="Wrong Words" />
-                </Menu>
+                <Appbar.Content title={route.name === 'Main' ? 'Flashcards' : route.name} />
               </Appbar.Header>
             ),
           }}
         >
-          <Stack.Screen name="Groups" component={GroupListScreen} />
+          <Stack.Screen name="Main" component={TabNavigator} />
           <Stack.Screen name="Flashcards" component={FlashcardScreen} />
-          <Stack.Screen name="Wrong Words" component={WrongWordsScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </PaperProvider>

@@ -1,6 +1,6 @@
 import { API_URL } from '../api';
 import React, { useEffect, useState } from 'react';
-import { View, FlatList, TouchableOpacity } from 'react-native';
+import { View, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text, List, Divider } from 'react-native-paper';
 
 export const GroupListScreen = ({ navigation }: any) => {
@@ -21,7 +21,7 @@ export const GroupListScreen = ({ navigation }: any) => {
   }, []);
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.container}>
       <FlatList
         data={groups}
         keyExtractor={(item: any) => item.id.toString()}
@@ -39,3 +39,10 @@ export const GroupListScreen = ({ navigation }: any) => {
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#121212',
+  },
+});
