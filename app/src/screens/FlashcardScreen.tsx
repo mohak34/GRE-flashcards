@@ -47,16 +47,25 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
   });
 
   const handleSwipe = (direction: 'next' | 'prev') => {
+    if (
+      (direction === 'prev' && currentIndex === 0) ||
+      (direction === 'next' && currentIndex === words.length - 1)
+    ) {
+      return;
+    }
+
     const slideToValue = direction === 'next' ? -500 : 500;
+    // To change the animation speed, adjust the `duration` value here.
+    // A lower number means a faster animation.
     Animated.parallel([
       Animated.timing(slideAnimation, {
         toValue: slideToValue,
-        duration: 200,
+        duration: 150, // Change this value to adjust speed
         useNativeDriver: true,
       }),
       Animated.timing(fadeAnimation, {
         toValue: 0,
-        duration: 200,
+        duration: 150, // Change this value to adjust speed
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -73,12 +82,12 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
       Animated.parallel([
         Animated.timing(slideAnimation, {
           toValue: 0,
-          duration: 200,
+          duration: 150, // Change this value to adjust speed
           useNativeDriver: true,
         }),
         Animated.timing(fadeAnimation, {
           toValue: 1,
-          duration: 200,
+          duration: 150, // Change this value to adjust speed
           useNativeDriver: true,
         }),
       ]).start();
@@ -129,21 +138,25 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
     <PanGestureHandler onHandlerStateChange={onSwipe}>
       <View style={styles.container}>
         <Animated.View style={[styles.cardContainer, { opacity: fadeAnimation, transform: [{ translateX: slideAnimation }] }]}>
-          <TouchableOpacity onPress={flipCard} activeOpacity={1} style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <TouchableOpacity onPress={flipCard} activeOpacity={1} style={styles.touchableCard}>
             <Animated.View style={[styles.card, { transform: [{ rotateY: frontInterpolate }] }]}>
-              <Card.Content>
+              <Card.Content style={styles.cardContent}>
                 <Text style={styles.cardText}>{currentWord.text}</Text>
               </Card.Content>
             </Animated.View>
             <Animated.View style={[styles.card, styles.cardBack, { transform: [{ rotateY: backInterpolate }] }]}>
-              <Card.Content>
+              <Card.Content style={styles.cardContent}>
                 <Text style={styles.cardText}>{currentWord.meaning}</Text>
               </Card.Content>
             </Animated.View>
           </TouchableOpacity>
           <View style={styles.buttonContainer}>
-            <Button icon={() => <MaterialCommunityIcons name="close-thick" size={32} color="#F8EDE3" />} mode="contained" style={{ backgroundColor: isWrong ? 'red' : '#9DB2BF' }} onPress={markWrong} />
-            <Button icon={() => <MaterialCommunityIcons name="check-bold" size={32} color="#F8EDE3" />} mode="contained" style={{ backgroundColor: isCorrect ? 'green' : '#9DB2BF' }} onPress={markCorrect} />
+            <TouchableOpacity style={[styles.button, { backgroundColor: isWrong ? 'red' : '#9DB2BF' }]} onPress={markWrong}>
+              <MaterialCommunityIcons name="close-thick" size={32} color="#F8EDE3" />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.button, { backgroundColor: isCorrect ? 'green' : '#9DB2BF' }]} onPress={markCorrect}>
+              <MaterialCommunityIcons name="check-bold" size={32} color="#F8EDE3" />
+            </TouchableOpacity>
           </View>
         </Animated.View>
       </View>
@@ -161,12 +174,17 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     width: '100%',
-    height: '60%',
+    height: '55%',
     backgroundColor: '#27374D',
     borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  touchableCard: {
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
   card: {
     width: '100%',
@@ -175,6 +193,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backfaceVisibility: 'hidden',
     backgroundColor: 'transparent',
+    padding: 20,
   },
   cardBack: {
     position: 'absolute',
@@ -185,7 +204,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     color: '#F8EDE3',
-    width: '100%',
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -193,5 +211,12 @@ const styles = StyleSheet.create({
     width: '100%',
     position: 'absolute',
     bottom: 20,
+  },
+  button: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
