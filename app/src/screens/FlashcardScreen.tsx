@@ -21,28 +21,6 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
   const flipAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    navigation.setOptions({ 
-      title: wrongWords ? 'Wrong Words' : groupName,
-      headerRight: () => (
-        <TouchableOpacity
-          onPress={shuffleWords}
-          style={[
-            styles.shuffleButton,
-            { 
-              backgroundColor: isShuffled ? '#4CAF50' : '#9DB2BF',
-              borderColor: isShuffled ? '#4CAF50' : '#9DB2BF'
-            }
-          ]}
-        >
-          <MaterialCommunityIcons
-            name="shuffle"
-            size={22}
-            color="#FFFFFF"
-          />
-        </TouchableOpacity>
-      ),
-    });
-    
     const fetchWords = async () => {
       try {
         let data;
@@ -70,6 +48,31 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
   useEffect(() => {
     console.log('Words state changed, length:', words.length);
   }, [words]);
+
+  // Separate effect to update header when shuffle state changes
+  useEffect(() => {
+    navigation.setOptions({ 
+      title: wrongWords ? 'Wrong Words' : groupName,
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={shuffleWords}
+          style={[
+            styles.shuffleButton,
+            { 
+              backgroundColor: isShuffled ? '#4CAF50' : '#9DB2BF',
+              borderColor: isShuffled ? '#4CAF50' : '#9DB2BF'
+            }
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="shuffle"
+            size={22}
+            color="#FFFFFF"
+          />
+        </TouchableOpacity>
+      ),
+    });
+  }, [isShuffled, wrongWords, groupName]);
 
   const shuffleWords = () => {
     if (isShuffled) {
@@ -268,6 +271,11 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
 
 
   const markWrong = async () => {
+    if (currentIndex >= words.length || !words[currentIndex]) {
+      console.error('No word available at current index');
+      return;
+    }
+    
     setIsWrong(true);
     const word: any = words[currentIndex];
     try {
@@ -277,12 +285,35 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
     } catch (error) {
       console.error("Error marking word as wrong:", error);
     }
-    handleSwipe("next");
+    
+    // Only move to next if not at the last word
+    if (currentIndex < words.length - 1) {
+      handleSwipe("next");
+    } else {
+      // If at last word, just reset the button state
+      setTimeout(() => {
+        setIsWrong(false);
+      }, 1000);
+    }
   };
 
   const markCorrect = () => {
+    if (currentIndex >= words.length || !words[currentIndex]) {
+      console.error('No word available at current index');
+      return;
+    }
+    
     setIsCorrect(true);
-    handleSwipe("next");
+    
+    // Only move to next if not at the last word
+    if (currentIndex < words.length - 1) {
+      handleSwipe("next");
+    } else {
+      // If at last word, just reset the button state
+      setTimeout(() => {
+        setIsCorrect(false);
+      }, 1000);
+    }
   };
 
   if (words.length === 0) {
@@ -296,6 +327,15 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
   const currentWord: any = words[currentIndex];
   const nextWord: any = currentIndex < words.length - 1 ? words[currentIndex + 1] : null;
   const prevWord: any = currentIndex > 0 ? words[currentIndex - 1] : null;
+
+  // Safety check to prevent rendering if currentWord is undefined
+  if (!currentWord) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.cardText}>No more words available</Text>
+      </View>
+    );
+  }
 
   const renderCard = (word: any, animatedStyle: any, isMain = false) => (
     <Animated.View
