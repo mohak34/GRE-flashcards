@@ -195,19 +195,19 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
             return;
           }
           
-          // Limit the movement to prevent excessive dragging
-          const limitedDx = Math.max(-250, Math.min(250, gestureState.dx));
+          // Limit the movement to prevent excessive dragging and ensure smooth reset
+          const limitedDx = Math.max(-200, Math.min(200, gestureState.dx));
           pan.setValue({ x: limitedDx, y: 0 });
           
           // Update card positions based on limited movement
           if (limitedDx < 0 && currentIndex < words.length - 1) {
             // Dragging left, show next card
-            const newOffset = Math.max(0, 400 + limitedDx);
+            const newOffset = Math.max(50, 400 + limitedDx);
             nextCardOffset.setValue(newOffset);
             prevCardOffset.setValue(-400);
           } else if (limitedDx > 0 && currentIndex > 0) {
             // Dragging right, show previous card  
-            const newOffset = Math.min(0, -400 + limitedDx);
+            const newOffset = Math.min(-50, -400 + limitedDx);
             prevCardOffset.setValue(newOffset);
             nextCardOffset.setValue(400);
           } else {
@@ -227,7 +227,7 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
             return;
           }
           
-          const swipeThreshold = 80; // Reduced threshold for easier swiping
+          const swipeThreshold = 70; // Lowered threshold for better responsiveness
           
           if (gestureState.dx > swipeThreshold) {
             console.log('Attempting to go to previous word');
@@ -257,20 +257,26 @@ export const FlashcardScreen = ({ route, navigation }: any) => {
   );
 
   const resetCardPositions = () => {
+    // Force immediate reset to prevent stuck states
+    pan.setValue({ x: 0, y: 0 });
+    nextCardOffset.setValue(400);
+    prevCardOffset.setValue(-400);
+    
+    // Then animate smoothly to ensure visual consistency
     Animated.parallel([
       Animated.timing(pan, {
         toValue: { x: 0, y: 0 },
-        duration: 200,
+        duration: 150,
         useNativeDriver: true,
       }),
       Animated.timing(nextCardOffset, {
         toValue: 400,
-        duration: 200,
+        duration: 150,
         useNativeDriver: true,
       }),
       Animated.timing(prevCardOffset, {
         toValue: -400,
-        duration: 200,
+        duration: 150,
         useNativeDriver: true,
       }),
     ]).start();

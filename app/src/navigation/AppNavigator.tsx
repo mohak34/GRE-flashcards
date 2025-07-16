@@ -48,10 +48,11 @@ export const AppNavigator = () => {
         <Stack.Navigator
           initialRouteName="Main"
           screenOptions={{
-            header: ({ navigation, back, route }) => (
+            header: ({ navigation, back, route, options }) => (
               <Appbar.Header>
                 {back ? <Appbar.BackAction onPress={navigation.goBack} /> : null}
-                <Appbar.Content title={route.name === 'Main' ? 'Flashcards' : route.name} />
+                <Appbar.Content title={options.title || (route.name === 'Main' ? 'Flashcards' : route.name)} />
+                {options.headerRight && options.headerRight({})}
               </Appbar.Header>
             ),
           }}
