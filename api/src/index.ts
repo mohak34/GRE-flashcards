@@ -1,6 +1,6 @@
-import express from 'express';
-import cors from 'cors';
-import { PrismaClient } from '@prisma/client';
+import express from "express";
+import cors from "cors";
+import { PrismaClient } from "@prisma/client";
 
 const app = express();
 const prisma = new PrismaClient();
@@ -8,12 +8,12 @@ const prisma = new PrismaClient();
 app.use(cors());
 app.use(express.json());
 
-app.get('/', (req, res) => {
-  res.send('Flashcards API is running!');
+app.get("/", (req, res) => {
+  res.send("Flashcards API is running!");
 });
 
 // Get all word groups
-app.get('/groups', async (req, res) => {
+app.get("/groups", async (req, res) => {
   const groups = await prisma.wordGroup.findMany({
     include: {
       _count: {
@@ -25,7 +25,7 @@ app.get('/groups', async (req, res) => {
 });
 
 // Get all words for a specific group
-app.get('/groups/:id/words', async (req, res) => {
+app.get("/groups/:id/words", async (req, res) => {
   const { id } = req.params;
   const words = await prisma.word.findMany({
     where: { groupId: parseInt(id) },
@@ -34,7 +34,7 @@ app.get('/groups/:id/words', async (req, res) => {
 });
 
 // Add a word to the wrong words list
-app.post('/words/:id/mark-wrong', async (req, res) => {
+app.post("/words/:id/mark-wrong", async (req, res) => {
   const { id } = req.params;
   const wordId = parseInt(id);
 
@@ -44,7 +44,9 @@ app.post('/words/:id/mark-wrong', async (req, res) => {
     });
 
     if (existingWrongWord) {
-      return res.status(409).json({ message: 'Word is already in the wrong list.' });
+      return res
+        .status(409)
+        .json({ message: "Word is already in the wrong list." });
     }
 
     const wrongWord = await prisma.wrongWord.create({
@@ -54,17 +56,19 @@ app.post('/words/:id/mark-wrong', async (req, res) => {
     });
     res.json(wrongWord);
   } catch (error: any) {
-    console.error('Error marking word as wrong:', error);
+    console.error("Error marking word as wrong:", error);
     // Handle race condition where word was added between check and create
-    if (error?.code === 'P2002') {
-      return res.status(409).json({ message: 'Word is already in the wrong list.' });
+    if (error?.code === "P2002") {
+      return res
+        .status(409)
+        .json({ message: "Word is already in the wrong list." });
     }
-    res.status(500).json({ message: 'Failed to mark word as wrong' });
+    res.status(500).json({ message: "Failed to mark word as wrong" });
   }
 });
 
 // Get all wrong words
-app.get('/wrong-words', async (req, res) => {
+app.get("/wrong-words", async (req, res) => {
   const wrongWords = await prisma.wrongWord.findMany({
     include: {
       word: {
@@ -74,29 +78,29 @@ app.get('/wrong-words', async (req, res) => {
       },
     },
   });
-  res.json(wrongWords.map(ww => ww.word));
+  res.json(wrongWords.map((ww) => ww.word));
 });
 
 // Remove a word from the wrong words list
-app.delete('/wrong-words/:wordId', async (req, res) => {
+app.delete("/wrong-words/:wordId", async (req, res) => {
   const { wordId } = req.params;
   try {
     await prisma.wrongWord.delete({
       where: { wordId: parseInt(wordId) },
     });
-    res.json({ message: 'Word removed from wrong list successfully' });
+    res.json({ message: "Word removed from wrong list successfully" });
   } catch (error) {
-    res.status(404).json({ message: 'Word not found in wrong list' });
+    res.status(404).json({ message: "Word not found in wrong list" });
   }
 });
 
 // Remove all words from the wrong words list
-app.delete('/wrong-words', async (req, res) => {
+app.delete("/wrong-words", async (req, res) => {
   try {
     await prisma.wrongWord.deleteMany({});
-    res.json({ message: 'All words removed from wrong list successfully' });
+    res.json({ message: "All words removed from wrong list successfully" });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to clear wrong words list' });
+    res.status(500).json({ message: "Failed to clear wrong words list" });
   }
 });
 
