@@ -1,0 +1,32 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model WordGroup {
+  id     Int     @id @default(autoincrement())
+  name   String  @unique
+  words  Word[]
+}
+
+model Word {
+  id          Int        @id @default(autoincrement())
+  text        String
+  meaning     String
+  group       WordGroup  @relation(fields: [groupId], references: [id])
+  groupId     Int
+  WrongWord   WrongWord[]
+}
+
+model WrongWord {
+  id      Int   @id @default(autoincrement())
+  word    Word  @relation(fields: [wordId], references: [id])
+  wordId  Int   @unique
+}
