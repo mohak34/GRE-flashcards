@@ -13,8 +13,8 @@ const getApiUrl = () => {
     const localHost = hostUri ? hostUri.split(':')[0] : 'localhost';
     return `http://${localHost}:3001`;
   } else {
-    // Production mode - use Railway (we'll update this URL after deployment)
-    return 'https://your-railway-app.railway.app';
+    // Production mode - use Railway (replace with your actual Railway URL)
+    return 'https://gre-flashcards-production.railway.app';
   }
 };
 
