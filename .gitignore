@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment files (keep .env.production for deployment)
+.env
+.env.local
+.env.*.local
+
+# Build outputs that should be rebuilt on server
+api/dist/
+app/dist/
+app/web-build/
+app/build/
+
+# Generated files
+api/generated/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Expo
+.expo/
+expo-env.d.ts
+
+# TypeScript
+*.tsbuildinfo
+
+# Security
+*.pem
+*.key
+*.p8
+*.p12
+*.jks
+*.mobileprovision
